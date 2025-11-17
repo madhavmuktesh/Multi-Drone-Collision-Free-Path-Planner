@@ -37,12 +37,12 @@ A capstone project that simulates and plans optimal, collision-free 3D paths for
 
 **4-Panel Drone Analysis**
 
-![4-Panel Analysis](<img width="1919" height="967" alt="file_2025-11-09_00 46 57" src="https://github.com/user-attachments/assets/730e487b-df1d-4c9a-8528-ef19c85c90d2" />
-)
+<img width="1919" height="967" alt="file_2025-11-09_00 46 57" src="https://github.com/user-attachments/assets/730e487b-df1d-4c9a-8528-ef19c85c90d2" />
+
 
 **Interactive 3D Scenario (Plotly)**
 
-![Plotly 3D Scenario](<img width="1497" height="949" alt="file_2025-11-09_00 48 27" src="https://github.com/user-attachments/assets/be92c638-2743-4438-92b6-44f38f97b92d" />)
+<img width="1497" height="949" alt="file_2025-11-09_00 48 27" src="https://github.com/user-attachments/assets/be92c638-2743-4438-92b6-44f38f97b92d" />
 
 
 > Replace the `assets/*` images with the actual files in your repository. If you prefer remote hosting, insert the direct HTTPS image URLs.
