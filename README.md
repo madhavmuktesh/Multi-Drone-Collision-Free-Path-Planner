@@ -110,23 +110,3 @@ jupyter notebook
 Open `path.ipynb` and run the cells sequentially. If cells depend on long-running preprocessing (OSM parsing), consider running those first.
 
 ---
-
-## Notable Implementation Notes & Tips
-
-* **Fitness Function:** Use large penalty weights for collisions (building or inter-drone) to force feasible solutions before optimizing secondary objectives like smoothness or length.
-* **Sequential Planning:** The current approach plans drones one-by-one and registers completed paths as dynamic obstacles for subsequent planners. This reduces computation compared to simultaneous multi-agent planning but is order-dependent. Consider randomized order runs to reduce bias.
-* **Exporting for Three.js:** Export building meshes and drone waypoints as compact JSON (coordinates in WGS84 or projected CRS with metadata). Keep file sizes small by downsampling building polygons for web visualization.
-
----
-
-## Challenges & Learnings
-
-Designing an effective fitness function was the main challenge — balancing length, smoothness, altitude change, and collision avoidance required careful weighting and feature engineering. Managing multi-drone deconfliction was made efficient via sequential planning and altitude segregation.
-
-
-
-* convert this README into a `README.md` file in your repo and commit it (I can provide the `git` commands);
-* prepare a `requirements.txt` or `environment.yml` for Conda;
-* generate example `assets/` placeholders you can replace with your real screenshots/GIFs.
-
-Tell me which of these you'd like next.
