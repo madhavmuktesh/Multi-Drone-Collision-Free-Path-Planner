@@ -54,8 +54,10 @@ To run this project locally, you will need Python (3.9+) and Jupyter.
 1. **Clone the repository:**
 
 ```bash
-git clone https://github.com/madhavmuktesh/Your-Repo-Name.git
-cd Your-Repo-Name
+git clone https://github.com/madhavmuktesh/Multi-Drone-Collision-Free-Path-Planner
+.git
+cd Multi-Drone-Collision-Free-Path-Planner
+
 ```
 
 2. **Create a virtual environment (recommended):**
