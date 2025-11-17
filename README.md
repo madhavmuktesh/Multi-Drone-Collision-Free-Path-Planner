@@ -37,11 +37,13 @@ A capstone project that simulates and plans optimal, collision-free 3D paths for
 
 **4-Panel Drone Analysis**
 
-![4-Panel Analysis](assets/4-panel.png)
+![4-Panel Analysis](<img width="1919" height="967" alt="file_2025-11-09_00 46 57" src="https://github.com/user-attachments/assets/730e487b-df1d-4c9a-8528-ef19c85c90d2" />
+)
 
 **Interactive 3D Scenario (Plotly)**
 
-![Plotly 3D Scenario](assets/plotly-3d.png)
+![Plotly 3D Scenario](<img width="1497" height="949" alt="file_2025-11-09_00 48 27" src="https://github.com/user-attachments/assets/be92c638-2743-4438-92b6-44f38f97b92d" />)
+
 
 > Replace the `assets/*` images with the actual files in your repository. If you prefer remote hosting, insert the direct HTTPS image URLs.
 
@@ -102,7 +104,7 @@ This project requires a Berlin OSM file (example filename: `berlin-250930.osm.pb
 jupyter notebook
 ```
 
-Open `spcapstone.ipynb` and run the cells sequentially. If cells depend on long-running preprocessing (OSM parsing), consider running those first.
+Open `path.ipynb` and run the cells sequentially. If cells depend on long-running preprocessing (OSM parsing), consider running those first.
 
 ---
 
@@ -118,23 +120,7 @@ Open `spcapstone.ipynb` and run the cells sequentially. If cells depend on long-
 
 Designing an effective fitness function was the main challenge — balancing length, smoothness, altitude change, and collision avoidance required careful weighting and feature engineering. Managing multi-drone deconfliction was made efficient via sequential planning and altitude segregation.
 
----
 
-## TODO / Future Work
-
-* Implement parallel/concurrent planning with conflict resolution to reduce ordering bias.
-* Add path re-planning in-flight to handle dynamic obstacles or changed weather.
-* Add a lightweight web demo (Three.js) hosted on GitHub Pages.
-
----
-
-## License
-
-MIT License — include `LICENSE` file if you choose.
-
----
-
-If you want, I can:
 
 * convert this README into a `README.md` file in your repo and commit it (I can provide the `git` commands);
 * prepare a `requirements.txt` or `environment.yml` for Conda;
