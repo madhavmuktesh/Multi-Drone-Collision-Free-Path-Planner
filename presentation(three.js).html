@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi-Drone Scenario Viewer</title>
+  
+  <!-- Link to your external presentation CSS file -->
+  <!-- <link rel="stylesheet" href="berlin-presentation/css/presentation.css"> -->
+  
+  <style>
+    /* --- NEW CSS PROVIDED BY USER --- */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        font-family: 'Segoe UI', 'Arial', sans-serif;
+        overflow: hidden;
+        background: #0a0e27;
+        color: #fff;
+        display: flex;
+    }
+
+    /* ===== LEFT SIDE: 3D VIEWER (75%) ===== */
+    #viewer-container {
+        width: 75%;
+        height: 100vh;
+        position: relative;
+        background: linear-gradient(135deg, #1a1f3a 0%, #0a0e27 100%);
+    }
+    
+    /* This is the canvas element itself */
+    #viewer-container > canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    #scene-title {
+        position: absolute;
+        top: 20px;
+        left: 30px;
+        z-index: 10;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    }
+
+    #scene-title h1 {
+        font-size: 28px;
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #00d4ff;
+    }
+
+    #scene-title p {
+        font-size: 14px;
+        color: #a0a0a0;
+    }
+
+    #viewer-controls {
+        position: absolute;
+        top: 100px;
+        left: 30px;
+        z-index: 10;
+        display: flex;
+        flex-direction: column; /* Changed to column */
+        gap: 10px;
+    }
+
+    .control-btn {
+        background: rgba(0, 212, 255, 0.2);
+        border: 1px solid rgba(0, 212, 255, 0.5);
+        color: #00d4ff;
+        padding: 10px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        width: 180px; /* Give buttons a uniform width */
+        text-align: left; /* Align text left */
+    }
+
+    .control-btn:hover {
+        background: rgba(0, 212, 255, 0.4);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 212, 255, 0.3);
+    }
+    
+    .control-btn.active {
+        background: rgba(0, 212, 255, 0.6);
+        box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+    }
+
+    #loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 20px;
+        color: #00d4ff;
+        background: rgba(10, 14, 39, 0.9);
+        padding: 30px 60px;
+        border-radius: 10px;
+        border: 2px solid rgba(0, 212, 255, 0.3);
+        animation: pulse 1.5s ease-in-out infinite;
+        z-index: 100; /* Make sure it's on top */
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    #loading.hidden {
+        display: none;
+    }
+
+    /* ===== RIGHT SIDE: DETAILS PANEL (25%) ===== */
+    #details-panel {
+        width: 25%;
+        height: 100vh;
+        background: linear-gradient(180deg, #1a1f3a 0%, #0f1229 100%);
+        border-left: 2px solid rgba(0, 212, 255, 0.2);
+        overflow-y: auto;
+        padding: 0;
+        min-width: 280px; /* Ensure panel doesn't get too small */
+    }
+
+    /* Scrollbar styling */
+    #details-panel::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #details-panel::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.2);
+    }
+
+    #details-panel::-webkit-scrollbar-thumb {
+        background: rgba(0, 212, 255, 0.3);
+        border-radius: 3px;
+    }
+
+    #details-panel::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 212, 255, 0.5);
+    }
+
+    /* Panel Header */
+    .panel-header {
+        background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+        padding: 20px;
+        text-align: center;
+        border-bottom: 2px solid rgba(0, 212, 255, 0.3);
+        position: sticky; /* Stick to top */
+        top: 0;
+        z-index: 10;
+    }
+
+    .panel-header h2 {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #0a0e27;
+    }
+
+    .timestamp {
+        font-size: 11px;
+        color: rgba(10, 14, 39, 0.7);
+        margin-top: 5px;
+    }
+
+    /* Panel Sections */
+    .panel-section {
+        padding: 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .panel-section h3 {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #00d4ff;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    /* Scenario Selector */
+    #scenario-select {
+        width: 100%;
+        padding: 10px;
+        background: rgba(0, 212, 255, 0.1);
+        color: #00d4ff;
+        border: 1px solid rgba(0, 212, 255, 0.2);
+        border-radius: 8px;
+        font-size: 14px;
+    }
+    
+    #scenario-select option {
+        background: #0f1229;
+        color: #fff;
+    }
+
+
+    /* Stat Grid */
+    .stat-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .stat-item {
+        background: rgba(0, 212, 255, 0.1);
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(0, 212, 255, 0.2);
+        text-align: center;
+    }
+
+    .stat-label {
+        display: block;
+        font-size: 11px;
+        color: #a0a0a0;
+        margin-bottom: 5px;
+    }
+
+    .stat-value {
+        display: block;
+        font-size: 18px;
+        font-weight: 600;
+        color: #00d4ff;
+    }
+
+    /* Drone Buttons */
+    .drone-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .drone-btn {
+        padding: 12px;
+        border: 2px solid;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        text-align: center;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .drone-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s;
+    }
+
+    .drone-btn:hover::before {
+        left: 100%;
+    }
+    
+    .drone-btn:hover::after {
+        content: '(Double-click to follow)';
+        position: absolute;
+        bottom: 5px; /* Adjusted position */
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 10px;
+        color: #00d4ff;
+        white-space: nowrap;
+        pointer-events: none;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 2px 5px;
+        border-radius: 4px;
+        z-index: 1; /* Ensure it's above ::before */
+    }
+
+    .drone-btn.active {
+        box-shadow: 0 0 15px currentColor;
+        transform: scale(1.05);
+    }
+
+    /* Drone-specific colors */
+    .drone-btn[data-drone="0"] { background: rgba(255, 0, 0, 0.1); border-color: #ff0000; color: #ff4444; }
+    .drone-btn[data-drone="1"] { background: rgba(0, 0, 255, 0.1); border-color: #0000ff; color: #4444ff; }
+    .drone-btn[data-drone="2"] { background: rgba(0, 255, 0, 0.1); border-color: #00ff00; color: #44ff44; }
+    .drone-btn[data-drone="3"] { background: rgba(255, 136, 0, 0.1); border-color: #ff8800; color: #ffaa44; }
+    .drone-btn[data-drone="4"] { background: rgba(0, 255, 255, 0.1); border-color: #00ffff; color: #44ffff; }
+    .drone-btn[data-drone="5"] { background: rgba(255, 0, 255, 0.1); border-color: #ff00ff; color: #ff44ff; }
+    /* Add more colors if needed */
+
+
+    /* Detail Groups */
+    .detail-group {
+        margin-bottom: 20px;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 3px solid #00d4ff;
+    }
+
+    .detail-group h4 {
+        font-size: 13px;
+        color: #00d4ff;
+        margin-bottom: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .detail-label {
+        font-size: 12px;
+        color: #a0a0a0;
+    }
+
+    .detail-value {
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+    }
+
+    .detail-value.detour { color: #ffaa00; }
+    .detail-value.score { color: #00ff88; }
+    .detail-value.safety-ok { color: #00ff88; } /* Green for OK */
+    .detail-value.safety-fail { color: #ff4444; } /* Red for Fail */
+
+
+    /* Performance Bars */
+    .performance-bars {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .perf-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .perf-label-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .perf-label {
+        font-size: 12px;
+        color: #a0a0a0;
+    }
+    
+    .perf-value {
+        font-size: 12px;
+        font-weight: 600;
+        color: #00d4ff;
+    }
+
+    .perf-bar {
+        height: 10px; /* Slimmer bar */
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid rgba(0, 212, 255, 0.2);
+    }
+
+    .perf-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #00d4ff, #00ff88);
+        transition: width 0.5s ease;
+        border-radius: 10px;
+    }
+
+    /* Panel Footer */
+    .panel-footer {
+        padding: 20px;
+        text-align: center;
+        background: rgba(0, 212, 255, 0.05);
+        border-top: 1px solid rgba(0, 212, 255, 0.2);
+    }
+
+    .panel-footer p {
+        font-size: 11px;
+        color: #a0a0a0;
+        margin: 5px 0;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+        #viewer-container {
+            width: 70%;
+        }
+        
+        #details-panel {
+            width: 30%;
+        }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 3D Viewer Container -->
+  <div id="viewer-container">
+    <div id="scene-title">
+      <h1 id="scenario-title-h1">Multi-Drone Scenario</h1>
+      <p id="scenario-title-p">Loading scenario...</p>
+    </div>
+    <div id="viewer-controls">
+        <button id="animate-btn" class="control-btn" onclick="toggleAnimation()">▶ Cinematic Tour</button>
+        <button id="orbital-btn" class="control-btn" onclick="startOrbitalView()">⟳ Orbital View</button>
+        <button id="reset-btn" class="control-btn" onclick="resetCamera()">⤺ Reset Camera</button>
+        <button id="screenshot-btn" class="control-btn" onclick="captureScreenshot()">📸 Screenshot</button>
+    </div>
+    <div id="loading">Loading scenario data...</div>
+  </div>
+    
+  <!-- Side Panel for controls and stats -->
+  <div id="details-panel">
+  
+    <div class="panel-header">
+      <h2>Scenario Details</h2>
+      <div class="timestamp" id="timestamp"></div>
+    </div>
+    
+    <div class="panel-section">
+      <h3>Scenario Selector</h3>
+      <select id="scenario-select"></select>
+    </div>
+    
+    <div class="panel-section">
+      <h3>System Stats</h3>
+      <div class="stat-grid">
+        <div class="stat-item">
+          <span class="stat-label">Total Drones</span>
+          <span class="stat-value" id="total-drones">-</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Total Buildings</span>
+          <span class="stat-value" id="total-buildings">-</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Total Distance</span>
+          <span class="stat-value" id="total-distance">-</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Safety Radius</span>
+          <span class="stat-value" id="safety-radius">-</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="panel-section">
+      <h3>Drone Selector</h3>
+      <div class="drone-buttons" id="drone-selector">
+        <!-- Drone buttons will be added here by JS -->
+      </div>
+    </div>
+    
+    <div class="panel-section">
+      <h3>Drone Stats (Drone <span id="selected-drone-id">-</span>)</h3>
+      
+      <div class="detail-group">
+        <h4>Path</h4>
+        <div class="detail-row">
+          <span class="detail-label">Waypoints</span>
+          <span class="detail-value" id="waypoints-count">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Path Length</span>
+          <span class="detail-value" id="path-length">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Straight Distance</span>
+          <span class="detail-value" id="straight-distance">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Detour</span>
+          <span class="detail-value detour" id="detour">-</span>
+        </div>
+      </div>
+      
+      <div class="detail-group">
+        <h4>Altitude</h4>
+        <!-- REMOVED this detail-row -->
+        <!-- <div class="detail-row">
+          <span class="detail-label">Altitude Band</span>
+          <span class="detail-value" id="altitude-band">-</span>
+        </div> -->
+        <div class="detail-row">
+          <span class="detail-label">Mean Altitude</span>
+          <span class="detail-value" id="mean-altitude">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Altitude Range</span>
+          <span class="detail-value" id="altitude-range">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Vertical Movement</span>
+          <span class="detail-value" id="vertical-movement">-</span>
+        </div>
+      </div>
+
+      <div class="detail-group">
+        <h4>Maneuvers</h4>
+        <div class="detail-row">
+          <span class="detail-label">Avg. Angle</span>
+          <span class="detail-value" id="avg-angle">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Max Angle</span>
+          <span class="detail-value" id="max-angle">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Sharp Turns (>90°)</span>
+          <span class="detail-value" id="sharp-turns">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Smoothness</span>
+          <span class="detail-value score" id="smoothness-score">-</span>
+        </div>
+      </div>
+
+      <div class="detail-group">
+        <h4>Safety</h4>
+        <div class="detail-row">
+          <span class="detail-label">Building Collisions</span>
+          <span class="detail-value" id="building-collisions">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Drone Collisions</span>
+          <span class="detail-value" id="drone-collisions">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Min. Clearance</span>
+          <span class="detail-value" id="min-clearance">-</span>
+        </div>
+        <!-- ADDED THIS NEW ROW FOR THE CSV METRIC -->
+        <div class="detail-row">
+          <span class="detail-label">Collision-Free Score</span>
+          <span class="detail-value score" id="collision-free-score">-</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- START OF ADDED SECTION -->
+    <div class="panel-section">
+      <h3>Score Bars</h3>
+      <div class="performance-bars">
+        <div class="perf-item">
+          <div class="perf-label-row">
+            <span class="perf-label">Path Efficiency</span>
+            <span class="perf-value" id="efficiency-value">-</span>
+          </div>
+          <div class="perf-bar"><div class="perf-fill" id="efficiency-bar" style="width:0"></div></div>
+        </div>
+        <div class="perf-item">
+          <div class="perf-label-row">
+            <span class="perf-label">Altitude Compliance</span>
+            <span class="perf-value" id="altitude-value">-</span>
+          </div>
+          <div class="perf-bar"><div class="perf-fill" id="altitude-bar" style="width:0"></div></div>
+        </div>
+        <div class="perf-item">
+          <div class="perf-label-row">
+            <span class="perf-label">Smoothness Score</span>
+            <span class="perf-value" id="smoothness-value-bar-label">-</span>
+          </div>
+          <div class="perf-bar"><div class="perf-fill" id="smoothness-bar" style="width:0"></div></div>
+        </div>
+      </div>
+    </div>
+    <!-- END OF ADDED SECTION -->
+    
+    <div class="panel-section">
+        <h3>Performance Metrics (CSV)</h3>
+        <div class="detail-group">
+            <div class="detail-row">
+                <span class="detail-label">Overall Accuracy</span>
+                <span class="detail-value" id="accuracy-value">-</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Energy Efficiency</span>
+                <span class="detail-value" id="energy-value">-</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Path Efficiency</span>
+                <span class="detail-value" id="path-efficiency-value">-</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Smoothness Value</span>
+                <span class="detail-value" id="smoothness-value">-</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel-footer">
+        <p>Berlin Drone Simulation Viewer</p>
+        <p>© 2025</p>
+    </div>
+    
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.138.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.138.0/examples/js/controls/OrbitControls.js"></script>
+  <script>
+  // ---- Global State ----
+  let scene, camera, renderer, controls;
+  let dronePaths = {};
+  let selectedDroneId = 0;
+  window.scenarioMetrics = {};
+
+  const cameraPresets = {
+    overview: { position: { x: 3000, y: 2500, z: 3000 }, target: { x: 0, y: 100, z: 0 }, duration: 3000 },
+    birdsEye: { position: { x: 0, y: 4000, z: 0 }, target: { x: 0, y: 0, z: 0 }, duration: 3000 }, 
+    sideView: { position: { x: 4000, y: 800, z: 0 }, target: { x: 0, y: 400, z: 0 }, duration: 3000 }, 
+    groundLevel: { position: { x: 1500, y: 200, z: 1500 }, target: { x: 0, y: 500, z: 0 }, duration: 3000 }, 
+    diagonalSweep: { position: { x: -3000, y: 1500, z: -3000 }, target: { x: 1000, y: 200, z: 1000 }, duration: 3000 }
+  };
+
+  let isAnimating = false;
+  let animationStartTime = 0;
+  let cameraWaypoints = [];
+  let currentScenario = "Scenario_1_HeadOn_Central_Crossing";
+  
+  // Store button elements
+  const animBtn = document.getElementById("animate-btn");
+  const orbitalBtn = document.getElementById("orbital-btn");
+  const resetBtn = document.getElementById("reset-btn");
+  const screenshotBtn = document.getElementById("screenshot-btn");
+
+  window.addEventListener("load", init);
+
+  function init() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0e27);
+    scene.fog = new THREE.Fog(0x0a0e27, 2000, 8000);
+
+    const container = document.getElementById("viewer-container");
+    if (!container) {
+        console.error("Viewer container not found!");
+        return;
+    }
+    camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 1, 10000);
+    camera.position.set(2500, 1500, 2500);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); // preserveDrawingBuffer for screenshots
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 100, 0);
+    controls.enableDamping = true;
+
+    // --- Lights ---
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(2000, 3000, 2000);
+    scene.add(directionalLight);
+
+    // --- Ground Plane & Grid ---
+    const groundGeometry = new THREE.PlaneGeometry(10000, 10000);
+    const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x1a1f3a, side: THREE.DoubleSide });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.name = "ground_plane"; // <-- Added name to prevent removal
+    scene.add(ground);
+
+    const gridHelper = new THREE.GridHelper(5000, 50, 0x00d4ff, 0x444444);
+    gridHelper.material.opacity = 0.2;
+    gridHelper.material.transparent = true;
+    gridHelper.name = "grid_helper"; // <-- Added name to prevent removal
+    scene.add(gridHelper);
+
+    animate();
+    window.addEventListener("resize", onWindowResize, false);
+    document.getElementById("timestamp").textContent = new Date().toLocaleString();
+
+    buildScenarioList();
+  }
+
+  function buildScenarioList() {
+    // Hardcoded scenario list
+    const scenarios = [
+      "Scenario_1_HeadOn_Central_Crossing",
+      "Scenario_2_Altitude_Convergence_Conflict",
+      "Scenario_3_Offset_Crossing_Close_Miss",
+      "Scenario_4_MidAir_Overtake",
+      "Scenario_5_MultiAltitude_Stack_Conflict",
+      "Scenario_6_FourWay_Intersection",
+      "Scenario_7_Emergency_Descent_Intrusion",
+      "Scenario_8_Diagonal_WindDrift_Conflict",
+      "Scenario_9_Chain_Avoidance_Reaction",
+      "Scenario_10_LandingZone_Conflict"
+    ];
+    const select = document.getElementById("scenario-select");
+    select.innerHTML = "";
+    scenarios.forEach((scenario) => {
+      const option = document.createElement("option");
+      option.value = scenario;
+      option.textContent = scenario.replace(/_/g, " ").replace(/Scenario (\d+)/, 'Scenario $1');
+      select.appendChild(option);
+    });
+    select.value = currentScenario;
+    select.onchange = changeScenario;
+    changeScenario(); // Load initial scenario
+  }
+
+  async function changeScenario() {
+    currentScenario = document.getElementById("scenario-select").value;
+    const friendlyName = currentScenario.replace(/_/g, " ").replace(/Scenario (\d+)/, 'Scenario $1');
+    document.getElementById("scenario-title-h1").textContent = friendlyName;
+    document.getElementById("scenario-title-p").textContent = "Loading scenario data...";
+    
+    const loadingDiv = document.getElementById("loading");
+    loadingDiv.classList.remove("hidden");
+    
+    try {
+      const sceneUrl = `results/${currentScenario}/berlin-presentation/data/multi_drone_scene.json`;
+      const response = await fetch(sceneUrl);
+      if (!response.ok) throw new Error(`Missing data file: ${sceneUrl}`);
+      const data = await response.json();
+      
+      clearScene(); // Clear previous scenario objects
+
+      buildBuildings(data.buildings);
+      buildDronePaths(data.drones);
+      updateSystemStats(data);
+      createDroneButtons(data.drones);
+      
+      document.getElementById("scenario-title-p").textContent = `Viewing ${data.drones?.length || 0} drones and ${data.buildings?.length || 0} buildings.`;
+      
+      // Select the first drone by default
+      if (data.drones && data.drones.length > 0) {
+        selectDrone(0);
+      }
+
+    } catch (e) {
+      document.getElementById("scenario-title-p").textContent = `Error loading scenario.`;
+      loadingDiv.textContent = `Error loading scenario data: ${e.message}`;
+      console.error(e);
+      // Don't hide loading div on error, so user sees the message
+      return; 
+    }
+    
+    loadingDiv.classList.add("hidden"); // Hide loading only on success
+    await loadScenarioMetrics(currentScenario);
+  }
+
+  /**
+   * BUG FIX: Clears scenario-specific objects from the scene
+   * while preserving essentials (lights, ground, grid).
+   * Also disposes of geometry and materials to prevent memory leaks.
+   */
+  function clearScene() {
+    for (let i = scene.children.length - 1; i >= 0; i--) {
+      const obj = scene.children[i];
+
+      // Keep lights, ground, and grid
+      if (obj.isLight || obj.name === "ground_plane" || obj.name === "grid_helper") {
+        continue;
+      }
+
+      // Remove all other scenario objects (Meshes, Lines, etc.)
+      if (obj.isMesh || obj.isLine || obj.isLineSegments) {
+        scene.remove(obj);
+
+        // Dispose of geometry and material to free up GPU memory
+        if (obj.geometry) {
+          obj.geometry.dispose();
+        }
+        if (obj.material) {
+          // Handle both single materials and arrays of materials
+          if (Array.isArray(obj.material)) {
+            obj.material.forEach(m => m.dispose());
+          } else {
+            obj.material.dispose();
+          }
+        }
+      }
+    }
+    // Reset the path tracker
+    dronePaths = {};
+  }
+
+  function buildBuildings(buildings) {
+    if (!buildings) return;
+    // Create materials once
+    const mat = new THREE.MeshLambertMaterial({ color: 0x444466, transparent: true, opacity: 0.7 });
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x00d4ff, opacity: 0.3, transparent: true });
+
+    buildings.forEach((b) => {
+      const geo = new THREE.BoxGeometry(b.width, b.height, b.length);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(b.x, b.height / 2, b.y); // Note: b.y is Z in 3D
+      
+      const edges = new THREE.EdgesGeometry(geo);
+      const wireframe = new THREE.LineSegments(edges, lineMat);
+      mesh.add(wireframe);
+      
+      scene.add(mesh);
+    });
+  }
+
+  function buildDronePaths(drones) {
+    if (!drones) return;
+    const colors = [0xff0000, 0x0000ff, 0x00ff00, 0xff8800, 0x00ffff, 0xff00ff]; // Added more colors
+    
+    drones.forEach((drone, i) => {
+      if (!drone.path || drone.path.length === 0) return;
+      
+      const color = colors[i % colors.length];
+      const points = drone.path.map((wp) => new THREE.Vector3(wp.x, wp.z, wp.y)); // Note: wp.z is Y(alt), wp.y is Z
+      
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const material = new THREE.LineBasicMaterial({ color: color, linewidth: 3 }); // Note: linewidth > 1 not guaranteed
+      const line = new THREE.Line(geometry, material);
+      scene.add(line);
+
+      const markers = [];
+      const markerMat = new THREE.MeshBasicMaterial({ color: color });
+      
+      // Create geometries once
+      const startGoalGeo = new THREE.SphereGeometry(20, 16, 16);
+      const waypointGeo = new THREE.SphereGeometry(12, 16, 16);
+
+      drone.path.forEach((wp) => {
+        const markerGeo = (wp.is_start || wp.is_goal) ? startGoalGeo : waypointGeo;
+        const marker = new THREE.Mesh(markerGeo, markerMat);
+        marker.position.set(wp.x, wp.z, wp.y);
+        scene.add(marker);
+        markers.push(marker);
+      });
+      dronePaths[i] = { line, markers, data: drone, visible: true };
+    });
+  }
+
+  function updateSystemStats(data) {
+    document.getElementById("total-drones").textContent = data.drones?.length || 0;
+    document.getElementById("total-buildings").textContent = data.buildings?.length || 0;
+    
+    const totalDist = data.drones?.reduce((sum, d) => sum + (d.statistics?.path_length_meters || 0), 0) || 0;
+    document.getElementById("total-distance").textContent = totalDist.toFixed(0) + "m";
+    document.getElementById("safety-radius").textContent = (data.metadata?.safety_radius || "-") + "m";
+  }
+
+  function createDroneButtons(drones) {
+    const container = document.getElementById("drone-selector");
+    container.innerHTML = ""; // clear past buttons
+    if (!drones) return;
+    
+    drones.forEach((drone, i) => {
+      const btn = document.createElement("div");
+      btn.className = "drone-btn";
+      btn.dataset.drone = i;
+      btn.textContent = `Drone ${i}`; // REMOVED altitude band text
+      btn.onclick = () => selectDrone(i);
+      btn.ondblclick = () => followDronePath(i);
+      container.appendChild(btn);
+    });
+  }
+
+  function selectDrone(droneId) {
+    if (!dronePaths[droneId]) {
+        console.warn(`No data for drone ${droneId}`);
+        return;
+    }
+    
+    selectedDroneId = droneId;
+    // Update active button
+    document.querySelectorAll(".drone-btn").forEach((btn) => {
+      btn.classList.toggle("active", parseInt(btn.dataset.drone) === droneId);
+    });
+
+    const drone = dronePaths[droneId].data;
+    const stats = drone.statistics || {}; // Ensure stats object exists
+    const path = drone.path;
+
+    if (!path || path.length < 2) {
+      console.warn(`Drone ${droneId} has an invalid path.`);
+      return;
+    }
+
+    const pathLength = stats.path_length_meters || 0;
+
+    // --- Calculate Stats (or use placeholders) ---
+    // These could be pre-calculated in JSON for better performance
+    
+    const straightDist = Math.sqrt(
+      Math.pow(path[path.length - 1].x - path[0].x, 2) +
+      Math.pow(path[path.length - 1].y - path[0].y, 2) +
+      Math.pow(path[path.length - 1].z - path[0].z, 2)
+    );
+    const detour = (pathLength > 0 && straightDist > 0) ? ((pathLength / straightDist - 1) * 100).toFixed(1) : 0;
+
+    const altitudes = path.map((p) => p.z);
+    const meanAlt = (altitudes.reduce((a, b) => a + b, 0) / altitudes.length).toFixed(1);
+    const minAlt = Math.min(...altitudes).toFixed(1);
+    const maxAlt = Math.max(...altitudes).toFixed(1);
+    const verticalMovement = path
+      .reduce((sum, p, i) => (i > 0 ? sum + Math.abs(p.z - path[i - 1].z) : sum), 0)
+      .toFixed(1);
+
+    const angles = [];
+    for (let i = 1; i < path.length - 1; i++) {
+      const v1 = { x: path[i].x - path[i - 1].x, y: path[i].y - path[i - 1].y };
+      const v2 = { x: path[i + 1].x - path[i].x, y: path[i + 1].y - path[i].y };
+      const norm1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
+      const norm2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
+      if (norm1 > 0.01 && norm2 > 0.01) {
+        const cosAngle = (v1.x * v2.x + v1.y * v2.y) / (norm1 * norm2);
+        const angle = (Math.acos(Math.max(-1, Math.min(1, cosAngle))) * 180) / Math.PI;
+        angles.push(angle);
+      }
+    }
+    const avgAngle = angles.length > 0 ? (angles.reduce((a, b) => a + b, 0) / angles.length).toFixed(1) : 0;
+    const maxAngle = angles.length > 0 ? Math.max(...angles).toFixed(1) : 0;
+    const sharpTurns = angles.filter((a) => a > 90).length;
+    const smoothness = Math.max(0, 100 - avgAngle / 1.8 - sharpTurns * 5).toFixed(1);
+
+    // --- Update Drone Stats Panel ---
+    document.getElementById("selected-drone-id").textContent = droneId;
+    
+    // Path
+    document.getElementById("waypoints-count").textContent = path.length;
+    document.getElementById("path-length").textContent = pathLength.toFixed(1) + "m";
+    document.getElementById("straight-distance").textContent = straightDist.toFixed(1) + "m";
+    document.getElementById("detour").textContent = `+${detour}%`;
+    
+    // Altitude
+    // REMOVED this line
+    // document.getElementById("altitude-band").textContent = `${drone.altitude_band?.min || "-"}-${drone.altitude_band?.max || "-"}m`;
+    document.getElementById("mean-altitude").textContent = meanAlt + "m";
+    document.getElementById("altitude-range").textContent = `${minAlt}-${maxAlt}m`;
+    document.getElementById("vertical-movement").textContent = verticalMovement + "m";
+
+    // Maneuvers
+    document.getElementById("avg-angle").textContent = avgAngle + "°";
+    document.getElementById("max-angle").textContent = maxAngle + "°";
+    document.getElementById("sharp-turns").textContent = sharpTurns;
+    document.getElementById("smoothness-score").textContent = smoothness + "%";
+
+    // Safety
+    const bCollisions = stats.building_collisions;
+    const dCollisions = stats.drone_collisions;
+    const minClear = stats.min_clearance_meters;
+    const bColEl = document.getElementById("building-collisions");
+    const dColEl = document.getElementById("drone-collisions");
+    const minClrEl = document.getElementById("min-clearance");
+
+    bColEl.textContent = (bCollisions !== undefined) ? `${bCollisions}` : "0";
+    bColEl.className = `detail-value ${bCollisions > 0 ? 'safety-fail' : 'safety-ok'}`;
+      
+    dColEl.textContent = (dCollisions !== undefined) ? `${dCollisions}` : "0";
+    dColEl.className = `detail-value ${dCollisions > 0 ? 'safety-fail' : 'safety-ok'}`;
+      
+    minClrEl.textContent = (minClear !== undefined) ? `${minClear.toFixed(1)}m` : ">15m";
+    minClrEl.className = `detail-value safety-ok`; // Assume ok unless logic dictates otherwise
+
+    // --- Update Score Bars (Partial) ---
+    const efficiency = (pathLength > 0 && straightDist > 0) ? ((straightDist / pathLength) * 100).toFixed(1) : 0;
+    
+    document.getElementById("efficiency-bar").style.width = efficiency + "%";
+    document.getElementById("efficiency-value").textContent = efficiency + "%";
+    
+    document.getElementById("smoothness-bar").style.width = smoothness + "%";
+    document.getElementById("smoothness-value-bar-label").textContent = smoothness + "%";
+
+    // ---- Load Performance Metrics (from CSV) ----
+    const metrics = window.scenarioMetrics && window.scenarioMetrics[droneId];
+    const altValEl = document.getElementById("altitude-value");
+    const altBarEl = document.getElementById("altitude-bar");
+    const colScoreEl = document.getElementById("collision-free-score");
+
+    if (metrics) {
+      document.getElementById("accuracy-value").textContent = metrics.Overall_Accuracy || metrics.overall_accuracy || "-";
+      document.getElementById("energy-value").textContent = metrics.Energy || metrics.energy_efficiency || "-";
+      document.getElementById("path-efficiency-value").textContent = metrics.Efficiency || metrics.path_efficiency || "-";
+      document.getElementById("smoothness-value").textContent = metrics.Smoothness || metrics.smoothness_score || "-";
+
+      // NEW: Populate Altitude Compliance from CSV
+      const altCompliance = metrics.Altitude || "0";
+      altValEl.textContent = altCompliance + "%";
+      altBarEl.style.width = altCompliance + "%";
+
+      // NEW: Populate Collision-Free Score from CSV
+      const collisionScore = metrics.Collision_Free || "0";
+      colScoreEl.textContent = collisionScore + "%";
+      colScoreEl.className = `detail-value ${parseFloat(collisionScore) < 100 ? 'safety-fail' : 'safety-ok'}`;
+
+    } else {
+      // Clear old metrics if none found for this drone
+      document.getElementById("accuracy-value").textContent = "-";
+      document.getElementById("energy-value").textContent = "-";
+      document.getElementById("path-efficiency-value").textContent = "-";
+      document.getElementById("smoothness-value").textContent = "-";
+
+      // NEW: Clear CSV-based fields
+      altValEl.textContent = "-";
+      altBarEl.style.width = "0%";
+      colScoreEl.textContent = "-";
+      colScoreEl.className = "detail-value";
+    }
+  }
+
+  async function loadScenarioMetrics(scenario) {
+    try {
+      // UPDATED: Use the new filename structure
+      const file = `results/${currentScenario}/${currentScenario}_accuracy_report.csv`;
+      const csvRows = await fetchCSV(file);
+      window.scenarioMetrics = {};
+      csvRows.forEach((row, idx) => {
+        // Assuming CSV row order matches drone ID (0, 1, 2...)
+        window.scenarioMetrics[idx] = row; // Keyed by drone index
+      });
+    } catch (e) { 
+      window.scenarioMetrics = {}; // Clear metrics on error
+      console.warn(`Could not load metrics CSV: ${e.message}`);
+    }
+    
+    // Re-select drone to update metrics panel after CSV load
+    selectDrone(selectedDroneId);
+  }
+
+  async function fetchCSV(url) {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error("File not found: " + url);
+    const text = await resp.text();
+    const lines = text.trim().split(/\r?\n/).filter(line => line.trim().length > 0);
+    if (lines.length < 2) return []; // Empty or only header
+    
+    const headers = lines[0].split(",").map(h => h.trim());
+    return lines.slice(1).map((line) => {
+      const values = line.split(",");
+      let obj = {};
+      headers.forEach((h, i) => (obj[h] = values[i] ? values[i].trim() : ""));
+      return obj;
+    });
+  }
+
+  function resetCamera() {
+    if (isAnimating) stopAnimation();
+    camera.position.set(2500, 1500, 2500);
+    controls.target.set(0, 100, 0);
+    controls.update();
+  }
+
+  function toggleAnimation() {
+    if (isAnimating) {
+      stopAnimation();
+    } else {
+      startCinematicTour();
+    }
+  }
+
+  function captureScreenshot() {
+    try {
+        renderer.render(scene, camera); // Ensure scene is rendered before capture
+        const dataURL = renderer.domElement.toDataURL("image/png");
+        const link = document.createElement("a");
+        link.href = dataURL;
+        link.download = `${currentScenario.toLowerCase()}_screenshot.png`;
+        link.click();
+    } catch (e) {
+        console.error("Screenshot failed:", e);
+    }
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update(); // Only needed if enableDamping is true
+    
+    // Only re-render if not in an animation loop
+    if (!isAnimating) {
+        renderer.render(scene, camera);
+    }
+  }
+
+  function onWindowResize() {
+    const container = document.getElementById("viewer-container");
+    if (container) {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+    }
+  }
+
+  function startCinematicTour() {
+    if (isAnimating) { stopAnimation(); return; }
+    isAnimating = true;
+    animationStartTime = Date.now();
+
+    cameraWaypoints = [
+      { ...cameraPresets.overview, delay: 0 },
+      { ...cameraPresets.sideView, delay: 3000 },
+      { ...cameraPresets.birdsEye, delay: 6000 },
+      { ...cameraPresets.groundLevel, delay: 9000 },
+      { ...cameraPresets.diagonalSweep, delay: 12000 },
+      { ...cameraPresets.overview, delay: 15000 }
+    ];
+    animBtn.textContent = "⏹ Stop Animation";
+    animBtn.classList.add("active");
+    orbitalBtn.classList.remove("active");
+    controls.enabled = false;
+    
+    requestAnimationFrame(animateCameraTour);
+  }
+
+  function animateCameraTour() {
+    if (!isAnimating) return;
+    
+    const elapsed = Date.now() - animationStartTime;
+    const totalDuration = 18000;
+    if (elapsed >= totalDuration) { 
+        stopAnimation(); 
+        resetCamera(); // Go back to default view after tour
+        return; 
+    }
+
+    let currentWaypoint = null;
+    let nextWaypoint = null;
+    let localProgress = 0;
+    
+    // Find current and next waypoints
+    for (let i = 0; i < cameraWaypoints.length - 1; i++) {
+      if (elapsed >= cameraWaypoints[i].delay && elapsed < cameraWaypoints[i + 1].delay) {
+        currentWaypoint = cameraWaypoints[i];
+        nextWaypoint = cameraWaypoints[i + 1];
+        const segmentDuration = nextWaypoint.delay - currentWaypoint.delay;
+        const segmentElapsed = elapsed - currentWaypoint.delay;
+        localProgress = segmentElapsed / segmentDuration;
+        break;
+      }
+    }
+
+    if (currentWaypoint && nextWaypoint) {
+      const eased = easeInOutCubic(localProgress);
+      // Position
+      camera.position.x = lerp(currentWaypoint.position.x, nextWaypoint.position.x, eased);
+      camera.position.y = lerp(currentWaypoint.position.y, nextWaypoint.position.y, eased);
+      camera.position.z = lerp(currentWaypoint.position.z, nextWaypoint.position.z, eased);
+      // Target
+      const targetX = lerp(currentWaypoint.target.x, nextWaypoint.target.x, eased);
+      const targetY = lerp(currentWaypoint.target.y, nextWaypoint.target.y, eased);
+      const targetZ = lerp(currentWaypoint.target.z, nextWaypoint.target.z, eased);
+      
+      controls.target.set(targetX, targetY, targetZ);
+      camera.lookAt(targetX, targetY, targetZ);
+    }
+    
+    renderer.render(scene, camera); // Render inside the animation loop
+    requestAnimationFrame(animateCameraTour);
+  }
+
+  function stopAnimation() {
+    isAnimating = false;
+    controls.enabled = true;
+    if (animBtn) animBtn.textContent = "▶ Cinematic Tour";
+    if (orbitalBtn) orbitalBtn.textContent = "⟳ Orbital View";
+    
+    // Remove active class from all animation buttons
+    animBtn.classList.remove("active");
+    orbitalBtn.classList.remove("active");
+  }
+
+  function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+  function lerp(start, end, t) {
+    return start + (end - start) * t;
+  }
+
+  function followDronePath(droneId) {
+    if (!dronePaths[droneId]) return;
+    if (isAnimating) stopAnimation();
+    isAnimating = true;
+    animationStartTime = Date.now();
+
+    const droneData = dronePaths[droneId].data;
+    const path = droneData.path;
+    if (!path || path.length < 2) {
+        stopAnimation();
+        return;
+    }
+    
+    animBtn.textContent = "⏹ Stop Follow";
+    animBtn.classList.add("active");
+    orbitalBtn.classList.remove("active");
+    controls.enabled = false;
+    animateDroneFollow(path);
+  }
+
+  function animateDroneFollow(path) {
+    if (!isAnimating) return;
+    
+    const elapsed = Date.now() - animationStartTime;
+    const duration = 12000; // 12 seconds to traverse path
+    const progress = Math.min(elapsed / duration, 1);
+
+    if (progress >= 1) { 
+        stopAnimation(); 
+        return; 
+    }
+    
+    // Find current position on path
+    const pathIndex = Math.floor(progress * (path.length - 1));
+    const nextIndex = Math.min(pathIndex + 1, path.length - 1);
+    const localProgress = (progress * (path.length - 1)) - pathIndex;
+    
+    const currentPoint = path[pathIndex];
+    const nextPoint = path[nextIndex];
+
+    // Interpolate target position (the drone's position)
+    const targetX = lerp(currentPoint.x, nextPoint.x, localProgress);
+    const targetY_scene = lerp(currentPoint.y, nextPoint.y, localProgress); // Ground-plane Z
+    const targetZ_scene = lerp(currentPoint.z, nextPoint.z, localProgress); // Altitude Y
+
+    // Calculate camera position (behind and above the target)
+    const offset = 200;
+    const heightOffset = 120;
+    const dx = nextPoint.x - currentPoint.x;
+    const dy = nextPoint.y - currentPoint.y; // Ground-plane direction
+    const length = Math.sqrt(dx * dx + dy * dy);
+
+    if (length > 0.1) {
+      const normDx = dx / length;
+      const normDy = dy / length;
+      camera.position.x = targetX - normDx * offset;
+      camera.position.y = targetZ_scene + heightOffset; // Use altitude + offset
+      camera.position.z = targetY_scene - normDy * offset; // Use ground-Z + offset
+    } else {
+      // Handle stationary or end point
+      camera.position.x = targetX - offset;
+      camera.position.y = targetZ_scene + heightOffset;
+      camera.position.z = targetY_scene;
+    }
+    
+    // Look at the target
+    controls.target.set(targetX, targetZ_scene, targetY_scene);
+    camera.lookAt(targetX, targetZ_scene, targetY_scene);
+
+    renderer.render(scene, camera); // Render inside the animation loop
+    requestAnimationFrame(() => animateDroneFollow(path));
+  }
+
+  function startOrbitalView() {
+    if (isAnimating) stopAnimation();
+    isAnimating = true;
+    animationStartTime = Date.now();
+    
+    orbitalBtn.textContent = "⏹ Stop Orbit";
+    orbitalBtn.classList.add("active");
+    animBtn.classList.remove("active");
+    controls.enabled = false;
+    animateOrbital();
+  }
+
+  function animateOrbital() {
+    if (!isAnimating) return;
+    
+    const elapsed = Date.now() - animationStartTime;
+    const duration = 20000; // 20 seconds per rotation
+    const progress = (elapsed % duration) / duration;
+    const angle = progress * Math.PI * 2;
+    const radius = 3500;
+    const height = 1500 + Math.sin(progress * Math.PI * 4) * 500; // Bob up and down
+
+    camera.position.x = Math.cos(angle) * radius;
+    camera.position.z = Math.sin(angle) * radius; // 3D Z-axis
+    camera.position.y = height; // 3D Y-axis (altitude)
+    
+    controls.target.set(0, 300, 0);
+    camera.lookAt(0, 300, 0);
+    
+    renderer.render(scene, camera); // Render inside the animation loop
+    requestAnimationFrame(animateOrbital);
+  }
+  </script>
+</body>
+</html>
